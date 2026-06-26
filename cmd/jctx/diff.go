@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
+	"github.com/AestheticAutonomy/justctx/internal/differ"
 	"github.com/spf13/cobra"
 )
 
@@ -15,8 +18,39 @@ var (
 var diffCmd = &cobra.Command{
 	Use:   "diff",
 	Short: "Diff generated guidelines against what source would produce",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("diff command is not implemented")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		if diffTarget == "" {
+			return fmt.Errorf("--target required")
+		}
+
+		res, err := differ.Diff(differ.DiffOpts{
+			Root:   cwd,
+			Target: diffTarget,
+			Role:   diffRole,
+			Tags:   diffTags,
+		})
+		if err != nil {
+			return err
+		}
+
+		if jsonFlag {
+			data, err := json.MarshalIndent(res, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(data))
+		} else {
+			fmt.Print(differ.FormatDiff(res))
+		}
+
+		if !res.InSync {
+			os.Exit(1)
+		}
+		return nil
 	},
 }
 
