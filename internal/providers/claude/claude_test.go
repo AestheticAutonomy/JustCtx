@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/AestheticAutonomy/justctx/internal/providers"
 	"github.com/AestheticAutonomy/justctx/pkg/schema"
 )
 
@@ -73,6 +74,40 @@ func TestClaudeProvider_FindFiles(t *testing.T) {
 		if expectedPath != actualPath {
 			t.Errorf("at index %d: expected %s, got %s", i, expectedPath, actualPath)
 		}
+	}
+}
+
+func TestClaudeProvider_RenderRules(t *testing.T) {
+	p := &ClaudeProvider{}
+
+	sections := []schema.Section{
+		{Heading: "Core Rules", Content: "Always write tests."},
+		{Heading: "Style", Content: "Use tabs."},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 output file, got %d", len(files))
+	}
+	if files[0].Path != "CLAUDE.md" {
+		t.Errorf("expected path CLAUDE.md, got %s", files[0].Path)
+	}
+	want := "## Core Rules\n\nAlways write tests.\n\n## Style\n\nUse tabs.\n"
+	if files[0].Content != want {
+		t.Errorf("content mismatch\nwant: %q\ngot:  %q", want, files[0].Content)
+	}
+}
+
+func TestClaudeProvider_RenderRules_Empty(t *testing.T) {
+	p := &ClaudeProvider{}
+	files, err := p.RenderRules(nil, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected empty slice, got %d files", len(files))
 	}
 }
 
