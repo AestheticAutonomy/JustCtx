@@ -64,6 +64,39 @@ func TestRead_Missing(t *testing.T) {
 	}
 }
 
+func TestManifest_UpdateOnRegen(t *testing.T) {
+	root := t.TempDir()
+
+	m1 := &Manifest{
+		SchemaVersion: 1,
+		Target:        "claude",
+		OutputPath:    "CLAUDE.md",
+		Chunks:        []Chunk{{SourceFile: "rules.md", Section: "Original Section"}},
+	}
+	if err := Write(root, "CLAUDE.md", m1); err != nil {
+		t.Fatal(err)
+	}
+
+	// Overwrite with updated manifest
+	m2 := &Manifest{
+		SchemaVersion: 1,
+		Target:        "claude",
+		OutputPath:    "CLAUDE.md",
+		Chunks:        []Chunk{{SourceFile: "rules.md", Section: "Updated Section"}},
+	}
+	if err := Write(root, "CLAUDE.md", m2); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Read(root, "CLAUDE.md")
+	if err != nil {
+		t.Fatalf("Read: %v", err)
+	}
+	if len(got.Chunks) != 1 || got.Chunks[0].Section != "Updated Section" {
+		t.Errorf("expected updated section, got: %+v", got.Chunks)
+	}
+}
+
 func TestListAll(t *testing.T) {
 	root := t.TempDir()
 
