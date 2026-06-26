@@ -15,6 +15,7 @@ type ScanOpts struct {
 	Target   string
 	NoGlobal bool
 	BottomUp bool
+	Depth    int
 }
 
 type AssemblyState struct {
@@ -58,6 +59,19 @@ func Scan(opts ScanOpts) (*schema.ScanResult, error) {
 		}
 	} else {
 		finalFiles = files
+	}
+
+	// If bottom-up with depth, filter files by directory level
+	if opts.BottomUp && opts.Depth > 0 {
+		absRoot, _ := filepath.Abs(opts.Root)
+		var depthFiltered []string
+		for _, file := range finalFiles {
+			level := dirLevel(absRoot, filepath.Dir(filepath.Clean(file)))
+			if level >= 0 && level <= opts.Depth {
+				depthFiltered = append(depthFiltered, file)
+			}
+		}
+		finalFiles = depthFiltered
 	}
 
 	// If bottom-up, reverse project files (or all files)
@@ -265,4 +279,32 @@ func countLines(s string) int {
 		n++
 	}
 	return n
+}
+
+// dirLevel returns how many directory levels fileDir is above root.
+// Returns 0 if fileDir == root, 1 if fileDir is one level up, etc.
+// Returns -1 if fileDir is not an ancestor of root.
+func dirLevel(root, fileDir string) int {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return -1
+	}
+	absFile, err := filepath.Abs(fileDir)
+	if err != nil {
+		return -1
+	}
+
+	// fileDir must be root or an ancestor of root
+	if absFile == absRoot {
+		return 0
+	}
+	if !strings.HasPrefix(absRoot, absFile+string(filepath.Separator)) {
+		return -1
+	}
+
+	rel, err := filepath.Rel(absFile, absRoot)
+	if err != nil {
+		return -1
+	}
+	return strings.Count(rel, string(filepath.Separator)) + 1
 }

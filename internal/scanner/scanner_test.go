@@ -216,3 +216,112 @@ func TestScan_Conflicts(t *testing.T) {
 		t.Error("expected contradicting_imperative conflict")
 	}
 }
+
+func TestScan_BottomUpDepth(t *testing.T) {
+	// Build a 5-level deep tree:
+	// repo/.git
+	// repo/L0.md         (level 4 above cwd)
+	// repo/a/L1.md       (level 3)
+	// repo/a/b/L2.md     (level 2)
+	// repo/a/b/c/L3.md   (level 1)
+	// repo/a/b/c/d/L4.md (level 0 = cwd)
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755)
+
+	dirs := []string{
+		repoRoot,
+		filepath.Join(repoRoot, "a"),
+		filepath.Join(repoRoot, "a", "b"),
+		filepath.Join(repoRoot, "a", "b", "c"),
+		filepath.Join(repoRoot, "a", "b", "c", "d"),
+	}
+	var allFiles []string
+	for i, dir := range dirs {
+		os.MkdirAll(dir, 0755)
+		f := filepath.Join(dir, "L"+string(rune('0'+i))+".md")
+		os.WriteFile(f, []byte("level "+string(rune('0'+i))+"\n"), 0644)
+		allFiles = append(allFiles, f)
+	}
+
+	cwd := dirs[4] // repo/a/b/c/d
+
+	mp := &mockProvider{name: "mockDepth", files: allFiles}
+	providers.Register(mp)
+
+	// Without depth: all 5 files returned
+	res, err := Scan(ScanOpts{
+		Root:     cwd,
+		Target:   "mockDepth",
+		NoGlobal: true,
+		BottomUp: true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Sources) != 5 {
+		t.Fatalf("no depth: expected 5 sources, got %d", len(res.Sources))
+	}
+
+	// Depth 2: cwd + 2 levels up = 3 directories (d, c, b)
+	res, err = Scan(ScanOpts{
+		Root:     cwd,
+		Target:   "mockDepth",
+		NoGlobal: true,
+		BottomUp: true,
+		Depth:    2,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Sources) != 3 {
+		var paths []string
+		for _, s := range res.Sources {
+			paths = append(paths, s.Path)
+		}
+		t.Fatalf("depth 2: expected 3 sources, got %d: %v", len(res.Sources), paths)
+	}
+
+	// Depth 0 (unlimited) with bottom-up: all files
+	res, err = Scan(ScanOpts{
+		Root:     cwd,
+		Target:   "mockDepth",
+		NoGlobal: true,
+		BottomUp: true,
+		Depth:    0,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Sources) != 5 {
+		t.Fatalf("depth 0: expected 5 sources, got %d", len(res.Sources))
+	}
+}
+
+func TestScan_DepthWithoutBottomUp(t *testing.T) {
+	// Depth without bottom-up should have no filtering effect at the scanner level.
+	// The warning is printed by the CLI layer (cmd/jctx/scan.go), not the scanner.
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755)
+
+	f1 := filepath.Join(repoRoot, "rules.md")
+	os.WriteFile(f1, []byte("content\n"), 0644)
+
+	mp := &mockProvider{name: "mockDepthNoBottomUp", files: []string{f1}}
+	providers.Register(mp)
+
+	res, err := Scan(ScanOpts{
+		Root:     repoRoot,
+		Target:   "mockDepthNoBottomUp",
+		NoGlobal: true,
+		BottomUp: false,
+		Depth:    2,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Sources) != 1 {
+		t.Fatalf("expected 1 source, got %d", len(res.Sources))
+	}
+}

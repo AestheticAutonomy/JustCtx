@@ -15,6 +15,7 @@ var (
 	scanTarget   string
 	scanNoGlobal bool
 	scanBottomUp bool
+	scanDepth    int
 )
 
 type ConfigDefaults struct {
@@ -51,11 +52,16 @@ var scanCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if scanDepth > 0 && !scanBottomUp {
+			fmt.Fprintln(os.Stderr, "--depth has no effect without --bottom-up")
+		}
+
 		res, err := scanner.Scan(scanner.ScanOpts{
 			Root:     cwd,
 			Target:   target,
 			NoGlobal: scanNoGlobal,
 			BottomUp: scanBottomUp,
+			Depth:    scanDepth,
 		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -133,7 +139,8 @@ var scanCmd = &cobra.Command{
 func init() {
 	scanCmd.Flags().StringVar(&scanTarget, "target", "", "which tool's guidelines to show")
 	scanCmd.Flags().BoolVar(&scanNoGlobal, "no-global", false, "skip ~/.claude/CLAUDE.md")
-	scanCmd.Flags().BoolVar(&scanBottomUp, "bottom-up", false, "walk from cwd upward instead of top-down (non-standard)")
+	scanCmd.Flags().BoolVar(&scanBottomUp, "bottom-up", false, "walk from cwd upward instead of top-down (use with --depth to limit levels)")
+	scanCmd.Flags().IntVar(&scanDepth, "depth", 0, "limit --bottom-up walk to N levels above cwd (0 = unlimited, requires --bottom-up)")
 	rootCmd.AddCommand(scanCmd)
 }
 
