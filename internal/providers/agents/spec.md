@@ -1,36 +1,60 @@
 # Agents Provider Specification
 
+## Overview
+`AGENTS.md` is an open, community-driven, tool-agnostic configuration standard designed to serve as a "README for AI agents". Originally introduced by OpenAI in August 2025 and subsequently transitioned to the Linux Foundation's Agentic AI Foundation, the standard aims to solve vendor-specific configuration fragmentation by providing a unified file for instructing AI coding assistants.
+
+---
+
 ## File Conventions
 
-### 1. File Location
-- **Location:** `AGENTS.md` at the project root.
+### 1. File Location & Scope
+*   **Project Root:** `[project-root]/AGENTS.md` — The canonical file for repository-scoped context.
+*   **Subdirectories:** `[project-root]/path/to/subdir/AGENTS.md` — Folder-specific context (e.g., scoping different rules for `tests/` vs `src/`).
+*   **Global Path (User-Level):**
+    *   Linux/macOS: `~/.agents/AGENTS.md`
+    *   Windows: `%USERPROFILE%\.agents\AGENTS.md`
 
-### 2. Consumers
-- Read by Claude Code, Cursor (Agent mode), and Antigravity CLI.
+### 2. Consumers & Official Support
+Confirmed tools and assistants that read `AGENTS.md` natively or via standard configurations:
+*   **Antigravity CLI (`agy`):** Natively reads project root and global configurations.
+*   **Cursor (Agent mode):** Natively reads project root and merges it.
+*   **GitHub Copilot:** Natively reads and parses project root context.
+*   **Aider & OpenAI Codex:** Natively consume root files to seed system prompt instructions.
+*   **Claude Code:** Does not natively discover `AGENTS.md` directly. Instead, compatibility is achieved by importing it at the top of `CLAUDE.md` using the `@AGENTS.md` directive or via symbolic linking.
 
-### 3. Cross-Tool Standard
-- Not owned by any single provider.
-- When generating files for multiple target tools, `AGENTS.md` is written only once (it contains cross-tool shared context and guidelines).
+### 3. Format
+*   **Type:** Plain Markdown.
+*   **Frontmatter:** None required or officially specified.
+*   **Structure:** Standard Markdown headings (e.g., `# Tech Stack`, `## Coding Style`, `## Build Commands`) are parsed as logical section divisions by tools.
 
-### 4. Format
-- Plain markdown, no special frontmatter required.
+### 4. Load Order & Precedence
+When co-existing with native vendor-specific files (e.g., `CLAUDE.md` or `.cursorrules` / `.cursor/rules/*.mdc`):
+1.  **Global vs. Project:** Project-specific files (`[project-root]/AGENTS.md`) append to or override settings from the Global User-Level file (`~/.agents/AGENTS.md`).
+2.  **Hierarchical Resolution:** Agents walk the directory tree from the root down to the current working directory, loading and merging all active `AGENTS.md` files (nearer files take precedence).
+3.  **Vendor Precedence:** Vendor-specific instructions (like `CLAUDE.md` for Claude Code or `.cursorrules` for Cursor) typically take precedence over or are merged alongside the shared `AGENTS.md`.
 
-### 5. Background and Load Order
-- `AGENTS.md` is an open, community-driven standard meant to act as a tool-agnostic "README for agents", reducing developer vendor lock-in.
-- When co-existing with vendor-specific instruction files (like `CLAUDE.md` or `.cursorrules`), AI coding agents merge and prioritize rules, often combining them or reading `AGENTS.md` alongside native files.
-- Some tools support hierarchical directories (scanning `AGENTS.md` at root and in subdirectories).
+---
+
+## justctx Treatment
+
+`justctx` treats the `agents` provider as a cross-tool, generic target for generation and a source for scanning.
+*   **No Frills:** It does not introduce provider-specific custom directives or metadata flags.
+*   **Scan Source:** Parsed to construct the consolidated context envelope.
+*   **Generate Target:** Assembled guidelines are compiled into a standard Markdown format and output to the target `AGENTS.md` file.
 
 ---
 
 ## Phase 1 Implementation
 
 In Phase 1, only scanning/parsing is implemented.
-- `FindFiles` locates `AGENTS.md` at the project root directory.
-- `ParseRules` reads the rules as a raw `schema.Section`.
-- Render is stubbed.
+*   **`FindFiles`:** Locates the `AGENTS.md` at the project repository root.
+*   **`ParseRules`:** Reads the rules from `AGENTS.md` as a raw `schema.Section` (no heading-based slicing is applied in Phase 1).
+*   **`RenderRules`:** Stubbed (returns `providers.ErrNotSupported`).
 
 ---
 
 ## Sources
-- The open `AGENTS.md` specification and community guidelines (`https://agents.md`).
-- Multi-agent tool-agnostic configuration standards.
+*   *Linux Foundation Agentic AI Foundation / Open Agentic Standard:* [agentsstandard.com](https://agentsstandard.com)
+*   *OpenAI AGENTS.md Specification:* [agents.md](https://agents.md)
+*   *Claude Code Configuration Documentation:* [github.com/support](https://github.com/support) (Conventions for `@import` in CLAUDE.md)
+*   *Cursor Rules Documentation:* [docs.cursor.com](https://docs.cursor.com)
