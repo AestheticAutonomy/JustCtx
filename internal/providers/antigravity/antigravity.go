@@ -3,6 +3,7 @@ package antigravity
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/AestheticAutonomy/justctx/internal/providers"
 	"github.com/AestheticAutonomy/justctx/pkg/schema"
@@ -87,7 +88,25 @@ func (p *AntigravityProvider) ParseRules(path string) ([]schema.Section, error) 
 }
 
 func (p *AntigravityProvider) RenderRules(sections []schema.Section, opts providers.RenderOpts) ([]providers.OutputFile, error) {
-	return nil, providers.ErrNotSupported
+	if len(sections) == 0 {
+		return nil, nil
+	}
+
+	var sb strings.Builder
+	for i, s := range sections {
+		if i > 0 {
+			sb.WriteString("\n\n")
+		}
+		if s.Heading != "" {
+			sb.WriteString("## ")
+			sb.WriteString(s.Heading)
+			sb.WriteString("\n\n")
+		}
+		sb.WriteString(strings.TrimRight(s.Content, "\n"))
+	}
+	sb.WriteString("\n")
+
+	return []providers.OutputFile{{Path: "GEMINI.md", Content: sb.String()}}, nil
 }
 
 // Helpers

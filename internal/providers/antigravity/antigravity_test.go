@@ -5,8 +5,42 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/AestheticAutonomy/justctx/internal/providers"
 	"github.com/AestheticAutonomy/justctx/pkg/schema"
 )
+
+func TestAntigravityProvider_RenderRules(t *testing.T) {
+	p := &AntigravityProvider{}
+	sections := []schema.Section{
+		{Heading: "Core Rules", Content: "Keep it simple."},
+		{Heading: "Style", Content: "Use gofmt."},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 output file, got %d", len(files))
+	}
+	if files[0].Path != "GEMINI.md" {
+		t.Errorf("expected path GEMINI.md, got %s", files[0].Path)
+	}
+	want := "## Core Rules\n\nKeep it simple.\n\n## Style\n\nUse gofmt.\n"
+	if files[0].Content != want {
+		t.Errorf("content mismatch\nwant: %q\ngot:  %q", want, files[0].Content)
+	}
+}
+
+func TestAntigravityProvider_RenderRules_Empty(t *testing.T) {
+	p := &AntigravityProvider{}
+	files, err := p.RenderRules(nil, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected empty slice, got %d files", len(files))
+	}
+}
 
 func TestAntigravityProvider_FindFiles(t *testing.T) {
 	tmpDir := t.TempDir()
