@@ -67,6 +67,35 @@ func Delete(root, outputPath string) error {
 	return err
 }
 
+// ListManifests returns all manifest structs stored in root's .jctx/.manifest/ dir.
+func ListManifests(root string) ([]*Manifest, error) {
+	dir := filepath.Join(root, ".jctx", ".manifest")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var manifests []*Manifest
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return nil, err
+		}
+		var m Manifest
+		if err := json.Unmarshal(data, &m); err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, &m)
+	}
+	return manifests, nil
+}
+
 func ListAll(root string) ([]string, error) {
 	dir := filepath.Join(root, ".jctx", ".manifest")
 	entries, err := os.ReadDir(dir)
