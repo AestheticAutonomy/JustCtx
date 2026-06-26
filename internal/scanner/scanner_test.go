@@ -3,6 +3,7 @@ package scanner
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/AestheticAutonomy/justctx/internal/providers"
@@ -323,5 +324,150 @@ func TestScan_DepthWithoutBottomUp(t *testing.T) {
 	}
 	if len(res.Sources) != 1 {
 		t.Fatalf("expected 1 source, got %d", len(res.Sources))
+	}
+}
+
+func TestScan_NoGlobal(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755)
+
+	// Set HOME so scanner's globalPath check uses our temp dir
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
+
+	// Create files: one "global" (matches globalPath), one project
+	globalPath := filepath.Join(tempHome, ".claude", "CLAUDE.md")
+	os.MkdirAll(filepath.Dir(globalPath), 0755)
+	os.WriteFile(globalPath, []byte("global rules\n"), 0644)
+
+	projectFile := filepath.Join(repoRoot, "CLAUDE.md")
+	os.WriteFile(projectFile, []byte("project rules\n"), 0644)
+
+	mp := &mockProvider{name: "mockNoGlobal", files: []string{globalPath, projectFile}}
+	providers.Register(mp)
+
+	// NoGlobal=true: only project file
+	res, err := Scan(ScanOpts{Root: repoRoot, Target: "mockNoGlobal", NoGlobal: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Sources) != 1 {
+		t.Errorf("NoGlobal=true: expected 1 source, got %d", len(res.Sources))
+	}
+
+	// NoGlobal=false: both files
+	res2, err := Scan(ScanOpts{Root: repoRoot, Target: "mockNoGlobal", NoGlobal: false})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res2.Sources) != 2 {
+		t.Errorf("NoGlobal=false: expected 2 sources, got %d", len(res2.Sources))
+	}
+}
+
+func TestScan_EmptyProvider(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755)
+
+	mp := &mockProvider{name: "mockEmpty", files: nil}
+	providers.Register(mp)
+
+	res, err := Scan(ScanOpts{Root: repoRoot, Target: "mockEmpty", NoGlobal: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Sources) != 0 {
+		t.Errorf("expected 0 sources, got %d", len(res.Sources))
+	}
+	if len(res.Assembled) != 0 {
+		t.Errorf("expected 0 chunks, got %d", len(res.Assembled))
+	}
+}
+
+func TestScan_NestedImports(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755)
+	os.MkdirAll(filepath.Join(repoRoot, "sub"), 0755)
+
+	// a.md imports sub/b.md; sub/b.md imports c.md (relative to sub/)
+	fileA := filepath.Join(repoRoot, "a.md")
+	fileB := filepath.Join(repoRoot, "sub", "b.md")
+	fileC := filepath.Join(repoRoot, "sub", "c.md")
+
+	os.WriteFile(fileA, []byte("line A\n@sub/b.md\nend A\n"), 0644)
+	os.WriteFile(fileB, []byte("line B\n@c.md\nend B\n"), 0644)
+	os.WriteFile(fileC, []byte("content C\n"), 0644)
+
+	mp := &mockProvider{name: "mockNested", files: []string{fileA}}
+	providers.Register(mp)
+
+	res, err := Scan(ScanOpts{Root: repoRoot, Target: "mockNested", NoGlobal: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Expect content from all three files in order
+	var allContent string
+	for _, chunk := range res.Assembled {
+		allContent += chunk.Content
+	}
+	for _, want := range []string{"line A", "line B", "content C", "end B", "end A"} {
+		if !strings.Contains(allContent, want) {
+			t.Errorf("missing %q in assembled output:\n%s", want, allContent)
+		}
+	}
+}
+
+func TestScan_MaxDepth(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755)
+
+	// Create chain: a→b→c→d→e→f→g (7 files, 6 depth levels — exceeds limit of 5)
+	names := []string{"a", "b", "c", "d", "e", "f", "g"}
+	for i, name := range names {
+		content := "content " + name + "\n"
+		if i+1 < len(names) {
+			content += "@" + names[i+1] + ".md\n"
+		}
+		os.WriteFile(filepath.Join(repoRoot, name+".md"), []byte(content), 0644)
+	}
+
+	mp := &mockProvider{name: "mockMaxDepth", files: []string{filepath.Join(repoRoot, "a.md")}}
+	providers.Register(mp)
+
+	_, err := Scan(ScanOpts{Root: repoRoot, Target: "mockMaxDepth", NoGlobal: true})
+	if err == nil {
+		t.Fatal("expected max depth error, got nil")
+	}
+}
+
+func TestScan_MissingImport(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755)
+
+	// File with @nonexistent.md — file does not exist, line kept as content
+	f := filepath.Join(repoRoot, "rules.md")
+	os.WriteFile(f, []byte("before\n@nonexistent.md\nafter\n"), 0644)
+
+	mp := &mockProvider{name: "mockMissingImport", files: []string{f}}
+	providers.Register(mp)
+
+	res, err := Scan(ScanOpts{Root: repoRoot, Target: "mockMissingImport", NoGlobal: true})
+	if err != nil {
+		t.Fatalf("expected no error for missing import, got: %v", err)
+	}
+
+	var allContent string
+	for _, chunk := range res.Assembled {
+		allContent += chunk.Content
+	}
+	if !strings.Contains(allContent, "@nonexistent.md") {
+		t.Errorf("expected @nonexistent.md to be kept as content:\n%s", allContent)
 	}
 }
