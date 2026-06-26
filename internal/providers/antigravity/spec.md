@@ -60,8 +60,7 @@ In Phase 1, only rules scanning/parsing is implemented.
 ---
 
 ## Sources
-*   *Antigravity CLI Documentation & Settings:* [antigravity.google/docs](https://antigravity.google/docs)
-*   *Antigravity CLI Rules & Customizations Specification:* [antigravity.google/docs/rules](https://antigravity.google/docs/rules)
-*   *Antigravity CLI MCP Integration:* [antigravity.google/docs/mcp](https://antigravity.google/docs/mcp)
-*   *Legacy Gemini CLI to Antigravity CLI Migration Guide:* [antigravity.google/docs/plugins](https://antigravity.google/docs/plugins)
-*   **Note:** Antigravity CLI launched June 18, 2026. All documentation URLs reflect the official site structure as researched at that time.
+*   *Google Developers Blog — Gemini CLI to Antigravity CLI transition:* [developers.googleblog.com](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)
+*   *Antigravity CLI GitHub repository:* [github.com/google-antigravity/antigravity-cli](https://github.com/google-antigravity/antigravity-cli)
+*   *Antigravity CLI Documentation:* [antigravity.google/docs](https://antigravity.google/docs) — domain confirmed live; specific sub-paths (rules, mcp, plugins) exist per official site structure but content could not be fully retrieved at research time.
+*   **Note:** Antigravity CLI launched June 18, 2026. All documentation reflects the official tooling as researched at that time.

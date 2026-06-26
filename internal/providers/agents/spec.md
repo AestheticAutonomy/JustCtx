@@ -1,7 +1,7 @@
 # Agents Provider Specification
 
 ## Overview
-`AGENTS.md` is an open, community-driven, tool-agnostic configuration standard designed to serve as a "README for AI agents". Originally introduced by OpenAI in August 2025 and subsequently transitioned to the Linux Foundation's Agentic AI Foundation, the standard aims to solve vendor-specific configuration fragmentation by providing a unified file for instructing AI coding assistants.
+`AGENTS.md` is an open, community-driven, tool-agnostic configuration standard designed to serve as a "README for AI agents". It emerged in 2025 from collaborative efforts across the AI software development ecosystem — early contributors included OpenAI Codex, Amp, Google's Jules, Cursor, and Factory — and is now stewarded by the Linux Foundation's Agentic AI Foundation. The standard aims to solve vendor-specific configuration fragmentation by providing a unified file for instructing AI coding assistants.
 
 ---
 
@@ -54,7 +54,8 @@ In Phase 1, only scanning/parsing is implemented.
 ---
 
 ## Sources
-*   *Linux Foundation Agentic AI Foundation / Open Agentic Standard:* [agentsstandard.com](https://agentsstandard.com)
-*   *OpenAI AGENTS.md Specification:* [agents.md](https://agents.md)
+*   *AGENTS.md format & spec:* [agents.md](https://agents.md)
+*   *Agentic AI Foundation (Linux Foundation) / hierarchical spec:* [agentsstandard.com](https://agentsstandard.com)
+*   *OpenAI Codex — AGENTS.md integration guide:* [developers.openai.com/codex/guides/agents-md](https://developers.openai.com/codex/guides/agents-md)
 *   *Claude Code Import Convention:* Per `internal/providers/claude/spec.md` — Claude Code supports `@<path>` import directives in `CLAUDE.md` files; `@AGENTS.md` at the top of a root `CLAUDE.md` is the standard compatibility shim for cross-tool context.
-*   *Cursor Rules Documentation:* [docs.cursor.com](https://docs.cursor.com)
+*   *Cursor Rules Documentation:* [cursor.com/docs/rules](https://cursor.com/docs/rules)

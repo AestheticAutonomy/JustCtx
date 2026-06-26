@@ -27,11 +27,11 @@
 - **Location:** `.cursor/plans/` directory under the project root. Used to store and track agent plans and roadmaps if they are saved to the workspace.
 
 ### 4. Activation Modes
-Cursor uses four activation modes for MDC rules:
-- **Always Apply:** `alwaysApply: true` in frontmatter.
-- **Auto Attached:** Driven by the `globs` match when working on relevant files.
-- **Agent Requested:** Activated dynamically based on the semantic match of the rule's `description` to the query.
-- **Manual:** Selected manually by the user in the UI.
+Cursor uses four activation modes for MDC rules (official names per Cursor docs):
+- **Always Apply:** `alwaysApply: true` in frontmatter — included in every chat session.
+- **Apply to Specific Files:** Driven by the `globs` match when those files are active or being edited.
+- **Apply Intelligently:** Agent selects the rule based on the semantic match of `description` to the current query.
+- **Apply Manually:** Invoked explicitly via `@rule-name` in chat.
 
 ### 5. Legacy rules file
 - **Location:** `.cursorrules` at the project root.
@@ -55,6 +55,6 @@ In Phase 1, only scanning/parsing is implemented.
 ---
 
 ## Sources
-- Cursor official documentation on Custom Rules (`.mdc` files).
+- Cursor official documentation on Rules: [cursor.com/docs/rules](https://cursor.com/docs/rules)
 - Cursor official documentation on Model Context Protocol (MCP) configuration.
 - Community guidelines and GitHub structures for `.cursorignore` and `.cursorrules`.
