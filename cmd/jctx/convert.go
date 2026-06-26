@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,6 +128,76 @@ func buildJctxSource(target string, sections []schema.Section) string {
 		sb.WriteString("\n")
 	}
 	return sb.String()
+}
+
+func runConvertCmd(cwd, from string, dryRun, outputJSON bool, out io.Writer) error {
+	if from == "" {
+		return fmt.Errorf("--from required")
+	}
+
+	p, err := providers.Get(from)
+	if err != nil {
+		return err
+	}
+
+	files, err := p.FindFiles(cwd, schema.TypeRules)
+	if err != nil {
+		return fmt.Errorf("finding files: %w", err)
+	}
+
+	if len(files) == 0 {
+		fmt.Fprintf(out, "no %s files found\n", from)
+		return nil
+	}
+
+	var written []string
+
+	for _, f := range files {
+		sections, err := p.ParseRules(f)
+		if err != nil {
+			return fmt.Errorf("parsing %s: %w", f, err)
+		}
+		if len(sections) == 0 {
+			continue
+		}
+
+		base := filepath.Base(f)
+		ext := filepath.Ext(base)
+		slug := strings.TrimSuffix(base, ext)
+
+		outPath := filepath.Join(cwd, ".jctx", "rules", slug+".md")
+		content := buildJctxSource(from, sections)
+
+		if dryRun {
+			fmt.Fprintf(out, "(dry run) .jctx/rules/%s.md\n", slug)
+			written = append(written, outPath)
+			continue
+		}
+
+		if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(outPath, []byte(content), 0644); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, ".jctx/rules/%s.md\n", slug)
+		written = append(written, outPath)
+	}
+
+	if outputJSON {
+		res := schema.ConvertResult{
+			Envelope: schema.Envelope{SchemaVersion: 1, Command: "convert", CWD: cwd},
+			From:     from,
+			Type:     schema.TypeRules,
+		}
+		_ = written
+		data, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, string(data))
+	}
+	return nil
 }
 
 func init() {

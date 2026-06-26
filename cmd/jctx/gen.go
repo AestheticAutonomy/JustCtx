@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/AestheticAutonomy/justctx/internal/generator"
@@ -75,6 +76,48 @@ var genCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func runGen(cwd string, targets []string, role string, tags []string, dryRun bool, outputJSON bool, out io.Writer) error {
+	for _, target := range targets {
+		opts := generator.GenOpts{
+			Root:   cwd,
+			Target: target,
+			Role:   role,
+			Tags:   tags,
+			DryRun: dryRun,
+		}
+		results, err := generator.Generate(opts)
+		if err != nil {
+			return fmt.Errorf("%s: %w", target, err)
+		}
+		if outputJSON {
+			for _, r := range results {
+				data, err := json.MarshalIndent(r, "", "  ")
+				if err != nil {
+					return err
+				}
+				fmt.Fprintln(out, string(data))
+			}
+			continue
+		}
+		for _, r := range results {
+			if dryRun {
+				fmt.Fprintf(out, "(dry run) %s\n", r.OutputPath)
+			} else {
+				fmt.Fprintln(out, r.OutputPath)
+			}
+		}
+	}
+	return nil
+}
+
+func allTargets() []string {
+	var targets []string
+	for _, p := range providers.All() {
+		targets = append(targets, p.Name())
+	}
+	return targets
 }
 
 func init() {

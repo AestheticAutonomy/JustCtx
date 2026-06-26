@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -142,6 +143,65 @@ func init() {
 	scanCmd.Flags().BoolVar(&scanBottomUp, "bottom-up", false, "walk from cwd upward instead of top-down (use with --depth to limit levels)")
 	scanCmd.Flags().IntVar(&scanDepth, "depth", 0, "limit --bottom-up walk to N levels above cwd (0 = unlimited, requires --bottom-up)")
 	rootCmd.AddCommand(scanCmd)
+}
+
+func runScan(cwd, target string, noGlobal, bottomUp bool, depth int, outputJSON bool, out io.Writer) error {
+	if target == "" {
+		defaults, err := loadConfigDefaults(cwd)
+		if err == nil && defaults != nil {
+			target = defaults.Target
+		}
+	}
+	if target == "" {
+		return fmt.Errorf("specify --target or set a default in .jctx/config.json")
+	}
+
+	res, err := scanner.Scan(scanner.ScanOpts{
+		Root:     cwd,
+		Target:   target,
+		NoGlobal: noGlobal,
+		BottomUp: bottomUp,
+		Depth:    depth,
+	})
+	if err != nil {
+		return err
+	}
+
+	if outputJSON {
+		data, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, string(data))
+		return nil
+	}
+
+	fmt.Fprintf(out, "Sources (%d):\n", len(res.Sources))
+	for _, src := range res.Sources {
+		fmt.Fprintf(out, "  [%s]\t%s\t(%d bytes)\n", src.Location, src.Path, src.Bytes)
+	}
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Assembled context:")
+	for _, chunk := range res.Assembled {
+		var srcPath string
+		for _, src := range res.Sources {
+			if src.ID == chunk.SourceID {
+				srcPath = src.Path
+				break
+			}
+		}
+		lineHeader := fmt.Sprintf("─── %s ", srcPath)
+		if len(lineHeader) < 50 {
+			lineHeader += strings.Repeat("─", 50-len(lineHeader))
+		}
+		fmt.Fprintln(out, lineHeader)
+		fmt.Fprint(out, chunk.Content)
+		if !strings.HasSuffix(chunk.Content, "\n") && chunk.Content != "" {
+			fmt.Fprintln(out)
+		}
+	}
+	fmt.Fprintln(out)
+	return nil
 }
 
 func loadConfigDefaults(startDir string) (*ConfigDefaults, error) {

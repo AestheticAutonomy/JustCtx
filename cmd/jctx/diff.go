@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/AestheticAutonomy/justctx/internal/differ"
+	"github.com/AestheticAutonomy/justctx/pkg/schema"
 	"github.com/spf13/cobra"
 )
 
@@ -52,6 +54,28 @@ var diffCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func runDiff(cwd, target, role string, tags []string, outputJSON bool, out io.Writer) (*schema.DiffResult, error) {
+	res, err := differ.Diff(differ.DiffOpts{
+		Root:   cwd,
+		Target: target,
+		Role:   role,
+		Tags:   tags,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if outputJSON {
+		data, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+		fmt.Fprintln(out, string(data))
+	} else {
+		fmt.Fprint(out, differ.FormatDiff(res))
+	}
+	return res, nil
 }
 
 func init() {

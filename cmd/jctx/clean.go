@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -88,6 +89,63 @@ var cleanCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func runClean(cwd, target string, all, dryRun, outputJSON bool, out io.Writer) error {
+	if target == "" && !all {
+		return fmt.Errorf("--target or --all required")
+	}
+
+	manifests, err := manifest.ListManifests(cwd)
+	if err != nil {
+		return err
+	}
+
+	var toClean []*manifest.Manifest
+	for _, m := range manifests {
+		if all || m.Target == target {
+			toClean = append(toClean, m)
+		}
+	}
+
+	if len(toClean) == 0 {
+		if target != "" {
+			fmt.Fprintf(out, "nothing to clean for %s\n", target)
+		} else {
+			fmt.Fprintln(out, "nothing to clean")
+		}
+		return nil
+	}
+
+	res := schema.CleanResult{
+		Envelope: schema.Envelope{SchemaVersion: 1, Command: "clean", CWD: cwd},
+	}
+
+	for _, m := range toClean {
+		absPath := filepath.Join(cwd, m.OutputPath)
+		if dryRun {
+			fmt.Fprintf(out, "(dry run) %s\n", m.OutputPath)
+			res.RemovedFiles = append(res.RemovedFiles, m.OutputPath)
+			continue
+		}
+		if err := os.Remove(absPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing %s: %w", m.OutputPath, err)
+		}
+		if err := manifest.Delete(cwd, m.OutputPath); err != nil {
+			return fmt.Errorf("removing manifest for %s: %w", m.OutputPath, err)
+		}
+		fmt.Fprintln(out, m.OutputPath)
+		res.RemovedFiles = append(res.RemovedFiles, m.OutputPath)
+	}
+
+	if outputJSON {
+		data, err := json.MarshalIndent(res, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, string(data))
+	}
+	return nil
 }
 
 func init() {
