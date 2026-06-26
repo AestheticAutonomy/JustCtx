@@ -72,7 +72,65 @@ func (p *CursorProvider) ParseRules(path string) ([]schema.Section, error) {
 }
 
 func (p *CursorProvider) RenderRules(sections []schema.Section, opts providers.RenderOpts) ([]providers.OutputFile, error) {
-	return nil, providers.ErrNotSupported
+	if len(sections) == 0 {
+		return nil, nil
+	}
+
+	files := make([]providers.OutputFile, 0, len(sections))
+	for _, s := range sections {
+		slug := toSlug(s.Heading)
+		if slug == "" {
+			slug = "rules"
+		}
+
+		globs, hasGlobs := s.Dimensions["globs"]
+		_, hasRole := s.Dimensions["role"]
+		_, hasTag := s.Dimensions["tag"]
+		alwaysApply := !hasRole && !hasTag && !hasGlobs
+
+		var fm strings.Builder
+		fm.WriteString("---\n")
+		fm.WriteString("description: ")
+		fm.WriteString(s.Heading)
+		fm.WriteString("\n")
+		if hasGlobs {
+			fm.WriteString("globs: ")
+			fm.WriteString(globs)
+			fm.WriteString("\n")
+		}
+		if alwaysApply {
+			fm.WriteString("alwaysApply: true\n")
+		} else {
+			fm.WriteString("alwaysApply: false\n")
+		}
+		fm.WriteString("---\n\n")
+		fm.WriteString(strings.TrimRight(s.Content, "\n"))
+		fm.WriteString("\n")
+
+		files = append(files, providers.OutputFile{
+			Path:    ".cursor/rules/" + slug + ".mdc",
+			Content: fm.String(),
+		})
+	}
+	return files, nil
+}
+
+func toSlug(s string) string {
+	s = strings.ToLower(s)
+	var b strings.Builder
+	for _, r := range s {
+		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-' {
+			b.WriteRune(r)
+		} else if r == ' ' || r == '_' {
+			b.WriteRune('-')
+		}
+	}
+	// collapse consecutive hyphens
+	result := b.String()
+	for strings.Contains(result, "--") {
+		result = strings.ReplaceAll(result, "--", "-")
+	}
+	return strings.Trim(result, "-")
 }
 
 // Helpers

@@ -6,8 +6,80 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AestheticAutonomy/justctx/internal/providers"
 	"github.com/AestheticAutonomy/justctx/pkg/schema"
 )
+
+func TestCursorProvider_RenderRules_NoFilter(t *testing.T) {
+	p := &CursorProvider{}
+	sections := []schema.Section{
+		{Heading: "Go Style", Content: "Use gofmt."},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	if files[0].Path != ".cursor/rules/go-style.mdc" {
+		t.Errorf("unexpected path: %s", files[0].Path)
+	}
+	if !strings.Contains(files[0].Content, "alwaysApply: true") {
+		t.Errorf("expected alwaysApply: true, got:\n%s", files[0].Content)
+	}
+	if !strings.Contains(files[0].Content, "description: Go Style") {
+		t.Errorf("expected description field, got:\n%s", files[0].Content)
+	}
+}
+
+func TestCursorProvider_RenderRules_WithGlobs(t *testing.T) {
+	p := &CursorProvider{}
+	sections := []schema.Section{
+		{
+			Heading:    "DB Rules",
+			Content:    "Use pgx.",
+			Dimensions: map[string]string{"globs": "*.go, internal/**/*.go"},
+		},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	if !strings.Contains(files[0].Content, "globs: *.go, internal/**/*.go") {
+		t.Errorf("expected globs in frontmatter:\n%s", files[0].Content)
+	}
+	if !strings.Contains(files[0].Content, "alwaysApply: false") {
+		t.Errorf("expected alwaysApply: false when globs set:\n%s", files[0].Content)
+	}
+}
+
+func TestCursorProvider_RenderRules_SlugGeneration(t *testing.T) {
+	p := &CursorProvider{}
+	cases := []struct {
+		heading string
+		slug    string
+	}{
+		{"Core Rules", "core-rules"},
+		{"Go / Style Guide!", "go-style-guide"},
+		{"  spaces  ", "spaces"},
+		{"A--B", "a-b"},
+	}
+	for _, tc := range cases {
+		sections := []schema.Section{{Heading: tc.heading, Content: "x"}}
+		files, err := p.RenderRules(sections, providers.RenderOpts{})
+		if err != nil {
+			t.Fatalf("%q: %v", tc.heading, err)
+		}
+		want := ".cursor/rules/" + tc.slug + ".mdc"
+		if files[0].Path != want {
+			t.Errorf("%q: expected path %s, got %s", tc.heading, want, files[0].Path)
+		}
+	}
+}
 
 func TestCursorProvider_FindFiles(t *testing.T) {
 	tmpDir := t.TempDir()
