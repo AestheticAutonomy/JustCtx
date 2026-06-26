@@ -26,6 +26,11 @@ Cursor uses four activation modes for MDC rules:
 - **Support:** basic rule injection for legacy cursor chat, but not used in agent mode.
 - **Action:** Included in scan for visibility (scan only), but never generated.
 
+### 4. Ignore Rules
+- **Location:** `.cursorignore` at the project root.
+- **Format:** Standard gitignore syntax.
+- **Action:** Excludes files and folders from being indexed or read by the Cursor agent.
+
 ---
 
 ## Phase 1 Implementation
@@ -34,3 +39,9 @@ In Phase 1, only scanning/parsing is implemented.
 - `FindFiles` collects `.cursor/rules/*.mdc` files and `.cursorrules` (if present).
 - `ParseRules` strips the YAML frontmatter from `.mdc` files and returns the rules as a `schema.Section`.
 - Render is stubbed.
+
+---
+
+## Sources
+- Cursor official documentation on Custom Rules (`.mdc` files).
+- Community guidelines and GitHub structures for `.cursorignore` and `.cursorrules`.
