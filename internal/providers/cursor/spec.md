@@ -4,17 +4,18 @@
 
 ### 1. Primary Format: `.cursor/rules/*.mdc`
 - **Location:** `.cursor/rules/` under the project root.
+- **Format Stability:** As of June 2026, `.cursor/rules/*.mdc` with YAML frontmatter remains the canonical format. No confirmed successor format or structural change has been announced in Cursor's documentation or changelog.
 - **Structure:** MDC rules are markdown files ending in `.mdc` with a YAML frontmatter block containing metadata at the very top:
   ```yaml
   ---
   description: "Rule description used by the LLM for request-based activation"
-  globs: ["glob patterns (e.g. *.go, internal/**/*.go)"]
+  globs: "*.go, internal/**/*.go"
   alwaysApply: false
   ---
   ```
 - **Frontmatter Fields:**
-  - `description` (String): **Critical.** Acts as a semantic prompt for Cursor's routing system to dynamically auto-attach the rule based on the context of the user request.
-  - `globs` (Array of Strings or String): Specifies which files or directories match this rule to trigger auto-attachment when those files are active or being edited.
+  - `description` (String): **Critical.** Acts as a semantic prompt for Cursor's routing system to dynamically select the rule based on the context of the user request.
+  - `globs` (String): Comma-separated glob patterns specifying which files trigger auto-attachment when those files are active or being edited (e.g., `"*.go, internal/**/*.go"`).
   - `alwaysApply` (Boolean): If `true`, the rule is persistent across every single conversation (token-heavy, use sparingly).
 - **Plain Markdown:** Plain `.md` files located in `.cursor/rules/` are passive documentation files. They are NOT treated as active rules and are ignored for automatic rule enforcement (frontmatter and `.mdc` extension are required).
 

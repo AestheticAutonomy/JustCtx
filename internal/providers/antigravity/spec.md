@@ -33,7 +33,7 @@ Antigravity stores workspace-specific extensions under the `.agents/` folder:
 When resolving instructions, the Antigravity CLI merges context from multiple files in the following order:
 1.  **Global Scope:** Loads global rules from `~/.gemini/GEMINI.md` and global customizations from `~/.gemini/config/AGENTS.md`.
 2.  **Project Root Scope:** Loads `[project-root]/GEMINI.md` and `[project-root]/AGENTS.md`. These append to/override global instructions.
-3.  **Conflict/Priority:** In the same directory, if both are present, `GEMINI.md` is loaded first and can be overridden or augmented by `AGENTS.md`, depending on active configurations.
+3.  **Conflict/Priority:** When both `GEMINI.md` and `AGENTS.md` are present in the same directory, `GEMINI.md` takes precedence for conflicting directives. `AGENTS.md` is treated as supplementary cross-tool context and is appended after the native file's content.
 
 ---
 
@@ -64,3 +64,4 @@ In Phase 1, only rules scanning/parsing is implemented.
 *   *Antigravity CLI Rules & Customizations Specification:* [antigravity.google/docs/rules](https://antigravity.google/docs/rules)
 *   *Antigravity CLI MCP Integration:* [antigravity.google/docs/mcp](https://antigravity.google/docs/mcp)
 *   *Legacy Gemini CLI to Antigravity CLI Migration Guide:* [antigravity.google/docs/plugins](https://antigravity.google/docs/plugins)
+*   **Note:** Antigravity CLI launched June 18, 2026. All documentation URLs reflect the official site structure as researched at that time.

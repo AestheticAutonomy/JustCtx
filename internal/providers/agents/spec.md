@@ -56,5 +56,5 @@ In Phase 1, only scanning/parsing is implemented.
 ## Sources
 *   *Linux Foundation Agentic AI Foundation / Open Agentic Standard:* [agentsstandard.com](https://agentsstandard.com)
 *   *OpenAI AGENTS.md Specification:* [agents.md](https://agents.md)
-*   *Claude Code Configuration Documentation:* [github.com/support](https://github.com/support) (Conventions for `@import` in CLAUDE.md)
+*   *Claude Code Import Convention:* Per `internal/providers/claude/spec.md` — Claude Code supports `@<path>` import directives in `CLAUDE.md` files; `@AGENTS.md` at the top of a root `CLAUDE.md` is the standard compatibility shim for cross-tool context.
 *   *Cursor Rules Documentation:* [docs.cursor.com](https://docs.cursor.com)
