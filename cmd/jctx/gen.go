@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
+	"github.com/AestheticAutonomy/justctx/internal/generator"
+	"github.com/AestheticAutonomy/justctx/internal/providers"
 	"github.com/spf13/cobra"
 )
 
@@ -16,9 +20,60 @@ var (
 
 var genCmd = &cobra.Command{
 	Use:   "gen [target]",
-	Short: "Generate guidelines for a tool from .justctx source",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("gen command is not implemented")
+	Short: "Generate guidelines for a tool from .jctx source",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		var targets []string
+		if genAll {
+			for _, p := range providers.All() {
+				targets = append(targets, p.Name())
+			}
+		} else {
+			if len(args) == 0 {
+				return fmt.Errorf("target required (or use --all)")
+			}
+			targets = []string{args[0]}
+		}
+
+		for _, target := range targets {
+			opts := generator.GenOpts{
+				Root:   cwd,
+				Target: target,
+				Role:   genRole,
+				Tags:   genTags,
+				DryRun: genDryRun,
+			}
+
+			results, err := generator.Generate(opts)
+			if err != nil {
+				return fmt.Errorf("%s: %w", target, err)
+			}
+
+			if jsonFlag {
+				for _, r := range results {
+					data, err := json.MarshalIndent(r, "", "  ")
+					if err != nil {
+						return err
+					}
+					fmt.Println(string(data))
+				}
+				continue
+			}
+
+			for _, r := range results {
+				if genDryRun {
+					fmt.Printf("(dry run) %s\n", r.OutputPath)
+				} else {
+					fmt.Println(r.OutputPath)
+				}
+			}
+		}
+
+		return nil
 	},
 }
 
