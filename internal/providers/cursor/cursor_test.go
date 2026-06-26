@@ -81,6 +81,64 @@ func TestCursorProvider_RenderRules_SlugGeneration(t *testing.T) {
 	}
 }
 
+func TestCursorProvider_FindFiles_MissingRulesDir(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	// No .cursorrules, no .cursor/rules/ dir
+	p := &CursorProvider{}
+	files, err := p.FindFiles(repoRoot, schema.TypeRules)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected no files, got %v", files)
+	}
+}
+
+func TestCursorProvider_ParseRules_NoFrontmatter(t *testing.T) {
+	tmpDir := t.TempDir()
+	mdcFile := filepath.Join(tmpDir, "rule.mdc")
+	raw := "No frontmatter here\njust content"
+	if err := os.WriteFile(mdcFile, []byte(raw), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	p := &CursorProvider{}
+	sections, err := p.ParseRules(mdcFile)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(sections) != 1 {
+		t.Fatalf("expected 1 section, got %d", len(sections))
+	}
+	if sections[0].Content != raw {
+		t.Errorf("content mismatch\nwant: %q\ngot:  %q", raw, sections[0].Content)
+	}
+}
+
+func TestCursorProvider_RenderRules_EmptyHeading(t *testing.T) {
+	p := &CursorProvider{}
+	sections := []schema.Section{
+		{Heading: "", Content: "no heading content"},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	if files[0].Path != ".cursor/rules/rules.mdc" {
+		t.Errorf("expected fallback slug 'rules', got path: %s", files[0].Path)
+	}
+	if !strings.Contains(files[0].Content, "alwaysApply: true") {
+		t.Errorf("expected alwaysApply: true for empty heading:\n%s", files[0].Content)
+	}
+}
+
 func TestCursorProvider_FindFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 

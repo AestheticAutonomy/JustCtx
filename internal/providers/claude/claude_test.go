@@ -111,6 +111,71 @@ func TestClaudeProvider_RenderRules_Empty(t *testing.T) {
 	}
 }
 
+func TestClaudeProvider_FindFiles_NoGlobal(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	claudePath := filepath.Join(repoRoot, "CLAUDE.md")
+	if err := os.WriteFile(claudePath, []byte("rules"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Home with no .claude/CLAUDE.md
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
+
+	p := &ClaudeProvider{}
+	files, err := p.FindFiles(repoRoot, schema.TypeRules)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 || filepath.Clean(files[0]) != filepath.Clean(claudePath) {
+		t.Errorf("expected only project CLAUDE.md, got %v", files)
+	}
+}
+
+func TestClaudeProvider_FindFiles_MissingCLAUDE(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
+
+	p := &ClaudeProvider{}
+	files, err := p.FindFiles(repoRoot, schema.TypeRules)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected no files, got %v", files)
+	}
+}
+
+func TestClaudeProvider_RenderRules_EmptyHeading(t *testing.T) {
+	p := &ClaudeProvider{}
+	sections := []schema.Section{
+		{Heading: "", Content: "No heading here."},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	want := "No heading here.\n"
+	if files[0].Content != want {
+		t.Errorf("content mismatch\nwant: %q\ngot:  %q", want, files[0].Content)
+	}
+}
+
 func TestClaudeProvider_ParseRules(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "CLAUDE.md")

@@ -42,6 +42,41 @@ func TestAgentsProvider_RenderRules_Empty(t *testing.T) {
 	}
 }
 
+func TestAgentsProvider_FindFiles_Empty(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	// No AGENTS.md present
+	p := &AgentsProvider{}
+	files, err := p.FindFiles(repoRoot, schema.TypeRules)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected empty slice, got %v", files)
+	}
+}
+
+func TestAgentsProvider_RenderRules_EmptyHeading(t *testing.T) {
+	p := &AgentsProvider{}
+	sections := []schema.Section{
+		{Heading: "", Content: "no heading content"},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	want := "no heading content\n"
+	if files[0].Content != want {
+		t.Errorf("content mismatch\nwant: %q\ngot:  %q", want, files[0].Content)
+	}
+}
+
 func TestAgentsProvider_FindFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 

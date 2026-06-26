@@ -42,6 +42,45 @@ func TestAntigravityProvider_RenderRules_Empty(t *testing.T) {
 	}
 }
 
+func TestAntigravityProvider_FindFiles_Missing(t *testing.T) {
+	tmpDir := t.TempDir()
+	repoRoot := filepath.Join(tmpDir, "repo")
+	if err := os.MkdirAll(filepath.Join(repoRoot, ".git"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	// No global, no GEMINI.md, no AGENTS.md
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
+
+	p := &AntigravityProvider{}
+	files, err := p.FindFiles(repoRoot, schema.TypeRules)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected no files, got %v", files)
+	}
+}
+
+func TestAntigravityProvider_RenderRules_EmptyHeading(t *testing.T) {
+	p := &AntigravityProvider{}
+	sections := []schema.Section{
+		{Heading: "", Content: "no heading content"},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	want := "no heading content\n"
+	if files[0].Content != want {
+		t.Errorf("content mismatch\nwant: %q\ngot:  %q", want, files[0].Content)
+	}
+}
+
 func TestAntigravityProvider_FindFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 
