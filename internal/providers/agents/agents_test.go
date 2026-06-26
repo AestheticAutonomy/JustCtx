@@ -5,8 +5,42 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/AestheticAutonomy/justctx/internal/providers"
 	"github.com/AestheticAutonomy/justctx/pkg/schema"
 )
+
+func TestAgentsProvider_RenderRules(t *testing.T) {
+	p := &AgentsProvider{}
+	sections := []schema.Section{
+		{Heading: "Core Rules", Content: "Always test."},
+		{Heading: "Style", Content: "Be consistent."},
+	}
+	files, err := p.RenderRules(sections, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 output file, got %d", len(files))
+	}
+	if files[0].Path != "AGENTS.md" {
+		t.Errorf("expected path AGENTS.md, got %s", files[0].Path)
+	}
+	want := "## Core Rules\n\nAlways test.\n\n## Style\n\nBe consistent.\n"
+	if files[0].Content != want {
+		t.Errorf("content mismatch\nwant: %q\ngot:  %q", want, files[0].Content)
+	}
+}
+
+func TestAgentsProvider_RenderRules_Empty(t *testing.T) {
+	p := &AgentsProvider{}
+	files, err := p.RenderRules(nil, providers.RenderOpts{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("expected empty slice, got %d files", len(files))
+	}
+}
 
 func TestAgentsProvider_FindFiles(t *testing.T) {
 	tmpDir := t.TempDir()
